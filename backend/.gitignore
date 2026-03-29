@@ -1,0 +1,13 @@
+# Database file - don't commit this, Railway creates its own
+shift_swap.db
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+.env
+venv/
+.venv/
+*.egg-info/
+dist/
+build/
