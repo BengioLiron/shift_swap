@@ -7,7 +7,7 @@ import '../models/user_model.dart';
 class ApiService {
   // Change this to your FastAPI server IP when running locally
   // For Android emulator use 10.0.2.2, for real device use your machine's LAN IP
-  static const String baseUrl = 'http://10.0.2.2:8000';
+  static const String baseUrl = 'https://shiftswap-production.up.railway.app';
 
   static Future<UserModel> createUser(String name, String role) async {
     final response = await http.post(
