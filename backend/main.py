@@ -22,7 +22,10 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-DB_PATH = "shift_swap.db"
+if os.path.exists("/data"):
+    DB_PATH = "/data/shift_swap.db"
+else:
+    DB_PATH = "shift_swap.db"
 
 # ─── Database Setup ────────────────────────────────────────────────────────────
 
