@@ -7,7 +7,7 @@ import '../models/user_model.dart';
 class ApiService {
   // Change this to your FastAPI server IP when running locally
   // For Android emulator use 10.0.2.2, for real device use your machine's LAN IP
-  static const String baseUrl = 'https://shiftswap-production.up.railway.app';
+  static const String baseUrl = 'http://localhost:8000';
 
   static Future<UserModel> createUser(String name, String role) async {
     final response = await http.post(
@@ -27,6 +27,7 @@ class ApiService {
     required String userRole,
     required String giveDay,
     required List<String> takeDays,
+    int weekOffset = 0,
   }) async {
     final response = await http.post(
       Uri.parse('$baseUrl/requests'),
@@ -37,6 +38,7 @@ class ApiService {
         'user_role': userRole,
         'give_day': giveDay,
         'take_days': takeDays,
+        'week_offset': weekOffset,
       }),
     );
     if (response.statusCode == 200) {
@@ -57,6 +59,17 @@ class ApiService {
           .toList();
     }
     throw Exception('Failed to fetch requests: ${response.body}');
+  }
+
+  static Future<List<SwapRequest>> getAllRequests(String userRole) async {
+    final response = await http.get(Uri.parse('$baseUrl/requests/all/$userRole'));
+    if (response.statusCode == 200) {
+      final data = jsonDecode(response.body) as List;
+      return data
+          .map((r) => SwapRequest.fromJson(r as Map<String, dynamic>))
+          .toList();
+    }
+    throw Exception('Failed to fetch all requests: ${response.body}');
   }
 
   static Future<void> markDone({

@@ -5,6 +5,7 @@ class SwapRequest {
   final String userRole;
   final String giveDay;
   final List<String> takeDays;
+  final int weekOffset; // 0 for current week, 1 for next week
   final String status; // "pending" | "matched" | "done"
   final List<MatchResult> matches;
 
@@ -15,6 +16,7 @@ class SwapRequest {
     required this.userRole,
     required this.giveDay,
     required this.takeDays,
+    this.weekOffset = 0,
     this.status = 'pending',
     this.matches = const [],
   });
@@ -27,6 +29,7 @@ class SwapRequest {
       userRole: json['user_role'] as String,
       giveDay: json['give_day'] as String,
       takeDays: List<String>.from(json['take_days'] as List),
+      weekOffset: json['week_offset'] as int? ?? 0,
       status: json['status'] as String? ?? 'pending',
       matches: (json['matches'] as List? ?? [])
           .map((m) => MatchResult.fromJson(m as Map<String, dynamic>))
@@ -41,6 +44,7 @@ class SwapRequest {
         'user_role': userRole,
         'give_day': giveDay,
         'take_days': takeDays,
+        'week_offset': weekOffset,
         'status': status,
       };
 }
