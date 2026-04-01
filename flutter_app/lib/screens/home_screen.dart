@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../models/user_model.dart';
 import 'submit_request_screen.dart';
 import 'my_requests_screen.dart';
+import 'request_board_screen.dart';
 
 class HomeScreen extends StatelessWidget {
   final UserModel user;
@@ -124,6 +125,18 @@ class HomeScreen extends StatelessWidget {
                       context,
                       MaterialPageRoute(
                         builder: (_) => MyRequestsScreen(user: user),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  _NavCard(
+                    icon: '📊',
+                    title: 'Request board',
+                    subtitle: 'Browse all pending requests',
+                    onTap: () => Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => RequestBoardScreen(user: user),
                       ),
                     ),
                   ),
