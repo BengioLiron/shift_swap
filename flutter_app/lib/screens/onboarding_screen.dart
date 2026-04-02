@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../models/user_model.dart';
+import '../services/api_service.dart';
 import 'home_screen.dart';
 
 class OnboardingScreen extends StatefulWidget {
@@ -29,6 +30,13 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
 
     setState(() => _isLoading = true);
     try {
+      final user = await ApiService.createUser(name, _selectedRole!);
+      if (!mounted) return;
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute(builder: (_) => HomeScreen(user: user)),
+      );
+    } catch (e) {
+      // Fallback to local user when backend is unavailable
       final user = UserModel(
         id: DateTime.now().millisecondsSinceEpoch.toString(),
         name: name,
@@ -38,8 +46,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
       Navigator.of(context).pushReplacement(
         MaterialPageRoute(builder: (_) => HomeScreen(user: user)),
       );
-    } catch (e) {
-      _showSnack('Error: $e');
+      _showSnack('Could not reach backend, using offline mode.');
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
