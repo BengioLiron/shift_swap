@@ -174,14 +174,25 @@ def find_matches(
 
 @app.post("/users", response_model=UserResponse)
 def create_user(body: CreateUserRequest):
-    """Create or retrieve a user profile."""
-    user_id = str(uuid.uuid4())
+    """Create or retrieve a user profile by name and role."""
     with get_db() as conn:
+        # Check if user with same name and role exists
+        row = conn.execute(
+            "SELECT id, name, role FROM users WHERE name = ? AND role = ?",
+            [body.name.strip(), body.role],
+        ).fetchone()
+        
+        if row:
+            # Return existing user
+            return UserResponse(id=row["id"], name=row["name"], role=row["role"])
+        
+        # Create new user
+        user_id = str(uuid.uuid4())
         conn.execute(
             "INSERT INTO users (id, name, role) VALUES (?, ?, ?)",
             [user_id, body.name.strip(), body.role],
         )
-    return UserResponse(id=user_id, name=body.name.strip(), role=body.role)
+        return UserResponse(id=user_id, name=body.name.strip(), role=body.role)
 
 
 @app.post("/requests", response_model=SubmitResponse)
@@ -228,20 +239,6 @@ def submit_request(body: CreateSwapRequest):
             my_week_offset=body.week_offset,
             exclude_user_id=body.user_id,
         )
-
-        # Mark matched requests (both sides)
-        if raw_matches:
-            match_ids = [m["id"] for m in raw_matches]
-            conn.execute(
-                "UPDATE swap_requests SET status = 'matched' WHERE id IN ({})".format(
-                    ",".join("?" * len(match_ids))
-                ),
-                match_ids,
-            )
-            conn.execute(
-                "UPDATE swap_requests SET status = 'matched' WHERE id = ?",
-                [request_id],
-            )
 
         # Build response
         match_responses = [
@@ -356,6 +353,54 @@ def get_all_requests(user_role: str):
             )
 
     return results
+
+
+@app.delete("/requests/{request_id}")
+def delete_request(request_id: str):
+    """Delete a request by ID."""
+    with get_db() as conn:
+        # Check if request exists and get its user_id
+        row = conn.execute(
+            "SELECT user_id FROM swap_requests WHERE id = ?",
+            [request_id],
+        ).fetchone()
+        
+        if not row:
+            raise HTTPException(404, "Request not found")
+        
+        # Delete the request
+        conn.execute(
+            "DELETE FROM swap_requests WHERE id = ?",
+            [request_id],
+        )
+        conn.commit()
+    
+    return {"message": "Request deleted successfully"}
+
+
+@app.post("/requests/mark-done")
+def mark_done_request(body: MarkDoneRequest):
+    """Mark two requests as matched (or done) in database."""
+    with get_db() as conn:
+        row_my = conn.execute(
+            "SELECT id FROM swap_requests WHERE id = ?",
+            [body.my_request_id],
+        ).fetchone()
+        row_their = conn.execute(
+            "SELECT id FROM swap_requests WHERE id = ?",
+            [body.their_request_id],
+        ).fetchone()
+
+        if not row_my or not row_their:
+            raise HTTPException(404, "One or both requests not found")
+
+        # Set both requests to matched status (explicit user match action)
+        conn.execute(
+            "UPDATE swap_requests SET status = 'matched' WHERE id IN (?, ?)",
+            [body.my_request_id, body.their_request_id],
+        )
+
+    return {"message": "Requests marked as matched"}
 
 
 @app.get("/health")

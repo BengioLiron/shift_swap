@@ -128,6 +128,12 @@ class _MyRequestsScreenState extends State<MyRequestsScreen> {
                       } catch (_) {}
                       setState(_load);
                     },
+                    onDelete: (requestId) async {
+                      try {
+                        await ApiService.deleteRequest(requestId);
+                      } catch (_) {}
+                      setState(_load);
+                    },
                   ),
                 );
               },
@@ -142,8 +148,13 @@ class _MyRequestsScreenState extends State<MyRequestsScreen> {
 class _RequestCard extends StatelessWidget {
   final SwapRequest request;
   final Function(String theirRequestId) onMarkDone;
+  final Function(String requestId) onDelete;
 
-  const _RequestCard({required this.request, required this.onMarkDone});
+  const _RequestCard({
+    required this.request,
+    required this.onMarkDone,
+    required this.onDelete,
+  });
 
   String _initials(String name) => name
       .split(' ')
@@ -154,7 +165,27 @@ class _RequestCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isMatched = request.status == 'matched';
+    final isDone = request.status == 'done';
     final hasMatch = request.matches.isNotEmpty;
+
+    String statusText;
+    Color statusBackground;
+    Color statusColor;
+
+    if (isDone) {
+      statusText = 'Done';
+      statusBackground = const Color(0xFFDDE8FF);
+      statusColor = const Color(0xFF1A3B7A);
+    } else if (isMatched) {
+      statusText = 'Matched';
+      statusBackground = const Color(0xFFEAF3DE);
+      statusColor = const Color(0xFF3B6D11);
+    } else {
+      statusText = 'Pending';
+      statusBackground = const Color(0xFFFAEEDA);
+      statusColor = const Color(0xFF854F0B);
+    }
 
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
@@ -174,20 +205,53 @@ class _RequestCard extends StatelessWidget {
                   Text('Take: ${request.takeDays.join(', ')}',
                       style: const TextStyle(fontSize: 12, color: Color(0xFF888780))),
                 ]),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: hasMatch ? const Color(0xFFEAF3DE) : const Color(0xFFFAEEDA),
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  child: Text(
-                    hasMatch ? 'Match!' : 'Pending',
-                    style: TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w600,
-                      color: hasMatch ? const Color(0xFF3B6D11) : const Color(0xFF854F0B),
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: statusBackground,
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: Text(
+                        statusText,
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w600,
+                          color: statusColor,
+                        ),
+                      ),
                     ),
-                  ),
+                    const SizedBox(width: 8),
+                    GestureDetector(
+                      onTap: () {
+                        showDialog(
+                          context: context,
+                          builder: (BuildContext context) => AlertDialog(
+                            title: const Text('Delete request?'),
+                            content: const Text('This action cannot be undone.'),
+                            actions: [
+                              TextButton(
+                                onPressed: () => Navigator.pop(context),
+                                child: const Text('Cancel'),
+                              ),
+                              TextButton(
+                                onPressed: () {
+                                  Navigator.pop(context);
+                                  onDelete(request.id);
+                                },
+                                child: const Text(
+                                  'Delete',
+                                  style: TextStyle(color: Colors.red),
+                                ),
+                              ),
+                            ],
+                          ),
+                        );
+                      },
+                      child: const Icon(Icons.delete_outline, size: 18, color: Color(0xFF888780)),
+                    ),
+                  ],
                 ),
               ],
             ),
@@ -228,7 +292,29 @@ class _RequestCard extends StatelessWidget {
                             minimumSize: Size.zero,
                             tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                           ),
-                          onPressed: () => onMarkDone(m.requestId),
+                          onPressed: () async {
+                            final confirmed = await showDialog<bool>(
+                              context: context,
+                              builder: (context) => AlertDialog(
+                                title: const Text('Mark done?'),
+                                content: Text('Mark done with ${m.userName}?'),
+                                actions: [
+                                  TextButton(
+                                    onPressed: () => Navigator.pop(context, false),
+                                    child: const Text('Cancel'),
+                                  ),
+                                  TextButton(
+                                    onPressed: () => Navigator.pop(context, true),
+                                    child: const Text('Confirm'),
+                                  ),
+                                ],
+                              ),
+                            );
+
+                            if (confirmed == true) {
+                              onMarkDone(m.requestId);
+                            }
+                          },
                           child: const Text('Done', style: TextStyle(fontSize: 12)),
                         ),
                       ],

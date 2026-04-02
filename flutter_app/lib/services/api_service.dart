@@ -88,4 +88,13 @@ class ApiService {
       throw Exception('Failed to mark done: ${response.body}');
     }
   }
+
+  static Future<void> deleteRequest(String requestId) async {
+    final response = await http.delete(
+      Uri.parse('$baseUrl/requests/$requestId'),
+    );
+    if (response.statusCode != 200) {
+      throw Exception('Failed to delete request: ${response.body}');
+    }
+  }
 }
