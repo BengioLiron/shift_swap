@@ -99,6 +99,10 @@ def get_day_name(date_str: str) -> str:
     days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
     return days[date.weekday()]
 
+def get_day_names(date_strs: list[str]) -> list[str]:
+    """Convert list of date strings to list of day names."""
+    return [get_day_name(date_str) for date_str in date_strs]
+
 def get_week_start_date(reference_date: datetime, week_offset: int = 0) -> datetime:
     """Get the Sunday that starts the week containing the reference_date + week_offset weeks."""
     current_week_start = reference_date - timedelta(days=(reference_date.weekday() + 1) % 7)
@@ -277,14 +281,15 @@ def submit_request(body: CreateSwapRequest):
 
     request_id = str(uuid.uuid4())
     give_day = get_day_name(give_date)
+    take_days = get_day_names(take_dates)
 
     with get_db() as conn:
         # Persist the new request
         conn.execute(
             """
             INSERT INTO swap_requests
-                (id, user_id, user_name, user_role, give_day, give_date, take_dates, week_offset, status)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'pending')
+                (id, user_id, user_name, user_role, give_day, give_date, take_days, take_dates, week_offset, status)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending')
             """,
             [
                 request_id,
@@ -293,6 +298,7 @@ def submit_request(body: CreateSwapRequest):
                 body.user_role,
                 give_day,
                 give_date,
+                json.dumps(take_days),
                 json.dumps(take_dates),
                 week_offset,
             ],
