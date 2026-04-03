@@ -7,7 +7,7 @@ import '../models/user_model.dart';
 class ApiService {
   // Change this to your FastAPI server IP when running locally
   // For Android emulator use 10.0.2.2, for real device use your machine's LAN IP
-  static const String baseUrl = 'http://localhost:8000';
+  static const String baseUrl = 'https://shiftswap-production.up.railway.app';
 
   static Future<UserModel> createUser(String name, String role) async {
     final response = await http.post(
@@ -25,9 +25,8 @@ class ApiService {
     required String userId,
     required String userName,
     required String userRole,
-    required String giveDay,
-    required List<String> takeDays,
-    int weekOffset = 0,
+    required DateTime giveDate,
+    required List<DateTime> takeDates,
   }) async {
     final response = await http.post(
       Uri.parse('$baseUrl/requests'),
@@ -36,9 +35,8 @@ class ApiService {
         'user_id': userId,
         'user_name': userName,
         'user_role': userRole,
-        'give_day': giveDay,
-        'take_days': takeDays,
-        'week_offset': weekOffset,
+        'give_date': giveDate.toIso8601String().split('T')[0],
+        'take_dates': takeDates.map((d) => d.toIso8601String().split('T')[0]).toList(),
       }),
     );
     if (response.statusCode == 200) {

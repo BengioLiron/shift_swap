@@ -7,16 +7,14 @@ import 'matches_screen.dart';
 
 class SubmitRequestScreen extends StatefulWidget {
   final UserModel user;
-  final int? initialWeekOffset;
-  final String? initialGiveDay;
-  final List<String>? initialTakeDays;
+  final DateTime? initialGiveDate;
+  final List<DateTime>? initialTakeDates;
 
   const SubmitRequestScreen({
     super.key,
     required this.user,
-    this.initialWeekOffset,
-    this.initialGiveDay,
-    this.initialTakeDays,
+    this.initialGiveDate,
+    this.initialTakeDates,
   });
 
   @override
@@ -25,24 +23,20 @@ class SubmitRequestScreen extends StatefulWidget {
 
 class _SubmitRequestScreenState extends State<SubmitRequestScreen> {
   int _step = 0; // 0 = Week, 1 = Give, 2 = Take, 3 = Submitting
-  int _weekOffset = 0; // 0 = this week, 1 = next week
-  String? _giveDay;
-  final Set<String> _takeDays = {};
+  int _weekOffset = 0; // 0 = this week, 1 = next week (for UI selection)
+  DateTime? _giveDate;
+  final Set<DateTime> _takeDates = {};
   bool _isLoading = false;
 
   @override
   void initState() {
     super.initState();
-    if (widget.initialWeekOffset != null) {
-      _weekOffset = widget.initialWeekOffset!;
+    if (widget.initialGiveDate != null) {
+      _giveDate = _dateOnly(widget.initialGiveDate!);
       _step = 1; // Skip week selection
     }
-    if (widget.initialGiveDay != null) {
-      _giveDay = widget.initialGiveDay;
-      _step = 2; // Skip give selection too
-    }
-    if (widget.initialTakeDays != null) {
-      _takeDays.addAll(widget.initialTakeDays!);
+    if (widget.initialTakeDates != null) {
+      _takeDates.addAll(widget.initialTakeDates!.map((d) => _dateOnly(d)));
     }
   }
 
@@ -50,19 +44,26 @@ class _SubmitRequestScreenState extends State<SubmitRequestScreen> {
     'Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'
   ];
 
-  List<String> get _weekDates {
+  // Get the dates for the current week offset selection
+  List<DateTime> get _weekDateObjects {
     final now = DateTime.now();
     final sunday = now.subtract(Duration(days: now.weekday % 7)).add(Duration(days: _weekOffset * 7));
-    return List.generate(7, (i) {
-      final d = sunday.add(Duration(days: i));
-      return '${_monthName(d.month)} ${d.day}';
-    });
+    return List.generate(7, (i) => sunday.add(Duration(days: i)));
+  }
+
+  List<String> get _weekDates {
+    return _weekDateObjects.map((d) => '${_monthName(d.month)} ${d.day}').toList();
   }
 
   String _monthName(int m) => const [
         '', 'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
         'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
       ][m];
+
+  // Normalize DateTime to remove time component for proper comparison
+  DateTime _dateOnly(DateTime date) {
+    return DateTime(date.year, date.month, date.day);
+  }
 
   Future<void> _submit() async {
     setState(() => _isLoading = true);
@@ -71,9 +72,8 @@ class _SubmitRequestScreenState extends State<SubmitRequestScreen> {
         userId: widget.user.id,
         userName: widget.user.name,
         userRole: widget.user.role,
-        giveDay: _giveDay!,
-        takeDays: _takeDays.toList(),
-        weekOffset: _weekOffset,
+        giveDate: _giveDate!,
+        takeDates: _takeDates.toList(),
       );
       if (!mounted) return;
       Navigator.pushReplacement(
@@ -81,8 +81,8 @@ class _SubmitRequestScreenState extends State<SubmitRequestScreen> {
         MaterialPageRoute(
           builder: (_) => MatchesScreen(
             user: widget.user,
-            giveDay: _giveDay!,
-            takeDays: _takeDays.toList(),
+            giveDate: _giveDate!,
+            takeDates: _takeDates.toList(),
             matches: matches,
           ),
         ),
@@ -96,8 +96,8 @@ class _SubmitRequestScreenState extends State<SubmitRequestScreen> {
         MaterialPageRoute(
           builder: (_) => MatchesScreen(
             user: widget.user,
-            giveDay: _giveDay!,
-            takeDays: _takeDays.toList(),
+            giveDate: _giveDate!,
+            takeDates: _takeDates.toList(),
             matches: mockMatches,
           ),
         ),
@@ -109,15 +109,15 @@ class _SubmitRequestScreenState extends State<SubmitRequestScreen> {
 
   List<SwapRequest> _getMockMatches() {
     // Returns mock matches for demo. In production, backend provides these.
-    if (_giveDay == 'Tuesday' || _takeDays.contains('Thursday')) {
+    if (_takeDates.isNotEmpty) {
       return [
         SwapRequest(
           id: 'mock-1',
           userId: 'u2',
           userName: 'Sarah K.',
           userRole: widget.user.role,
-          giveDay: _takeDays.first,
-          takeDays: [_giveDay!],
+          giveDate: _takeDates.first,
+          takeDates: [_giveDate!],
           matches: [],
         ),
       ];
@@ -202,6 +202,7 @@ class _SubmitRequestScreenState extends State<SubmitRequestScreen> {
 
   Widget _buildDaySelection() {
     final dates = _weekDates;
+    final dateObjects = _weekDateObjects;
     final isGiveStep = _step == 1;
 
     return ListView.builder(
@@ -210,23 +211,27 @@ class _SubmitRequestScreenState extends State<SubmitRequestScreen> {
       itemBuilder: (_, i) {
         final day = _weekDays[i];
         final date = dates[i];
+        final dateObj = _dateOnly(dateObjects[i]);
 
-        if (!isGiveStep && day == _giveDay) return const SizedBox.shrink();
+        if (!isGiveStep && _dateOnly(_giveDate ?? DateTime(2000)) == dateObj) {
+          return const SizedBox.shrink();
+        }
 
         final isSelected = isGiveStep
-            ? _giveDay == day
-            : _takeDays.contains(day);
+            ? _dateOnly(_giveDate ?? DateTime(2000)) == dateObj
+            : _takeDates.any((d) => _dateOnly(d) == dateObj);
 
         return GestureDetector(
           onTap: () {
             setState(() {
               if (isGiveStep) {
-                _giveDay = day;
+                _giveDate = dateObj;
               } else {
-                if (_takeDays.contains(day)) {
-                  _takeDays.remove(day);
-                } else {
-                  _takeDays.add(day);
+                final normalizedDateObj = dateObj;
+                final hadDate = _takeDates.any((d) => _dateOnly(d) == normalizedDateObj);
+                _takeDates.removeWhere((d) => _dateOnly(d) == normalizedDateObj);
+                if (!hadDate) {
+                  _takeDates.add(normalizedDateObj);
                 }
               }
             });
@@ -376,13 +381,13 @@ class _SubmitRequestScreenState extends State<SubmitRequestScreen> {
                       if (_step == 0) {
                         setState(() => _step = 1);
                       } else if (_step == 1) {
-                        if (_giveDay == null) {
+                        if (_giveDate == null) {
                           _showSnack('Please select a day to give away.');
                           return;
                         }
                         setState(() => _step = 2);
                       } else {
-                        if (_takeDays.isEmpty) {
+                        if (_takeDates.isEmpty) {
                           _showSnack('Please select at least one day you can take.');
                           return;
                         }

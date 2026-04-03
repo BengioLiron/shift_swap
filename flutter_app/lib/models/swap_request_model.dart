@@ -3,9 +3,8 @@ class SwapRequest {
   final String userId;
   final String userName;
   final String userRole;
-  final String giveDay;
-  final List<String> takeDays;
-  final int weekOffset; // 0 for current week, 1 for next week
+  final DateTime giveDate;
+  final List<DateTime> takeDates;
   final String status; // "pending" | "matched" | "done"
   final List<MatchResult> matches;
 
@@ -14,9 +13,8 @@ class SwapRequest {
     required this.userId,
     required this.userName,
     required this.userRole,
-    required this.giveDay,
-    required this.takeDays,
-    this.weekOffset = 0,
+    required this.giveDate,
+    required this.takeDates,
     this.status = 'pending',
     this.matches = const [],
   });
@@ -27,9 +25,10 @@ class SwapRequest {
       userId: json['user_id'] as String,
       userName: json['user_name'] as String,
       userRole: json['user_role'] as String,
-      giveDay: json['give_day'] as String,
-      takeDays: List<String>.from(json['take_days'] as List),
-      weekOffset: json['week_offset'] as int? ?? 0,
+      giveDate: DateTime.parse(json['give_date'] as String),
+      takeDates: (json['take_dates'] as List)
+          .map((d) => DateTime.parse(d as String))
+          .toList(),
       status: json['status'] as String? ?? 'pending',
       matches: (json['matches'] as List? ?? [])
           .map((m) => MatchResult.fromJson(m as Map<String, dynamic>))
@@ -42,9 +41,8 @@ class SwapRequest {
         'user_id': userId,
         'user_name': userName,
         'user_role': userRole,
-        'give_day': giveDay,
-        'take_days': takeDays,
-        'week_offset': weekOffset,
+        'give_date': giveDate.toIso8601String().split('T')[0],
+        'take_dates': takeDates.map((d) => d.toIso8601String().split('T')[0]).toList(),
         'status': status,
       };
 }
@@ -52,20 +50,22 @@ class SwapRequest {
 class MatchResult {
   final String requestId;
   final String userName;
-  final String giveDay;
-  final List<String> takeDays;
+  final DateTime giveDate;
+  final List<DateTime> takeDates;
 
   MatchResult({
     required this.requestId,
     required this.userName,
-    required this.giveDay,
-    required this.takeDays,
+    required this.giveDate,
+    required this.takeDates,
   });
 
   factory MatchResult.fromJson(Map<String, dynamic> json) => MatchResult(
         requestId: json['request_id'] as String,
         userName: json['user_name'] as String,
-        giveDay: json['give_day'] as String,
-        takeDays: List<String>.from(json['take_days'] as List),
+        giveDate: DateTime.parse(json['give_date'] as String),
+        takeDates: (json['take_dates'] as List)
+            .map((d) => DateTime.parse(d as String))
+            .toList(),
       );
 }

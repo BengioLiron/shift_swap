@@ -24,21 +24,28 @@ class _MyRequestsScreenState extends State<MyRequestsScreen> {
   void _load() {
     _requestsFuture = ApiService.getMyRequests(widget.user.id).catchError((_) {
       // Return mock data if backend unavailable
+      final baseDate = DateTime.now();
+      final tuesday = baseDate.add(Duration(days: (2 - baseDate.weekday) % 7));
+      final thursday = baseDate.add(Duration(days: (4 - baseDate.weekday) % 7));
+      final friday = baseDate.add(Duration(days: (5 - baseDate.weekday) % 7));
+      final saturday = baseDate.add(Duration(days: (6 - baseDate.weekday) % 7));
+      final wednesday = baseDate.add(Duration(days: (3 - baseDate.weekday) % 7));
+      
       return <SwapRequest>[
         SwapRequest(
           id: 'mock-req-1',
           userId: widget.user.id,
           userName: widget.user.name,
           userRole: widget.user.role,
-          giveDay: 'Tuesday',
-          takeDays: ['Thursday', 'Friday'],
+          giveDate: tuesday,
+          takeDates: [thursday, friday],
           status: 'matched',
           matches: [
             MatchResult(
               requestId: 'mock-2',
               userName: 'Sarah K.',
-              giveDay: 'Thursday',
-              takeDays: ['Tuesday'],
+              giveDate: thursday,
+              takeDates: [tuesday],
             ),
           ],
         ),
@@ -47,8 +54,8 @@ class _MyRequestsScreenState extends State<MyRequestsScreen> {
           userId: widget.user.id,
           userName: widget.user.name,
           userRole: widget.user.role,
-          giveDay: 'Saturday',
-          takeDays: ['Wednesday'],
+          giveDate: saturday,
+          takeDates: [wednesday],
           status: 'pending',
           matches: [],
         ),
@@ -163,6 +170,12 @@ class _RequestCard extends StatelessWidget {
       .take(2)
       .join();
 
+  String _formatDate(DateTime d) {
+    final months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    final days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+    return '${days[d.weekday % 7]} ${months[d.month - 1]} ${d.day}';
+  }
+
   @override
   Widget build(BuildContext context) {
     final isMatched = request.status == 'matched';
@@ -199,10 +212,10 @@ class _RequestCard extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                  Text('Give ${request.giveDay}',
+                  Text('Give ${_formatDate(request.giveDate)}',
                       style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w500)),
                   const SizedBox(height: 2),
-                  Text('Take: ${request.takeDays.join(', ')}',
+                  Text('Take: ${request.takeDates.map(_formatDate).join(', ')}',
                       style: const TextStyle(fontSize: 12, color: Color(0xFF888780))),
                 ]),
                 Row(
@@ -282,7 +295,7 @@ class _RequestCard extends StatelessWidget {
                           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                             Text(m.userName,
                                 style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500)),
-                            Text('Gives ${m.giveDay} · takes ${request.giveDay}',
+                            Text('Gives ${_formatDate(m.giveDate)} · takes ${_formatDate(request.giveDate)}',
                                 style: const TextStyle(fontSize: 11, color: Color(0xFF888780))),
                           ]),
                         ),
