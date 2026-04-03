@@ -25,9 +25,8 @@ class ApiService {
     required String userId,
     required String userName,
     required String userRole,
-    required String giveDay,
-    required List<String> takeDays,
-    int weekOffset = 0,
+    required DateTime giveDate,
+    required List<DateTime> takeDates,
   }) async {
     final response = await http.post(
       Uri.parse('$baseUrl/requests'),
@@ -36,9 +35,8 @@ class ApiService {
         'user_id': userId,
         'user_name': userName,
         'user_role': userRole,
-        'give_day': giveDay,
-        'take_days': takeDays,
-        'week_offset': weekOffset,
+        'give_date': giveDate.toIso8601String().split('T')[0],
+        'take_dates': takeDates.map((d) => d.toIso8601String().split('T')[0]).toList(),
       }),
     );
     if (response.statusCode == 200) {

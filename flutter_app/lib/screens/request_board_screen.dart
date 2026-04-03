@@ -58,9 +58,8 @@ class _RequestBoardScreenState extends State<RequestBoardScreen> {
       MaterialPageRoute(
         builder: (_) => SubmitRequestScreen(
           user: widget.user,
-          initialWeekOffset: request.weekOffset,
-          initialGiveDay: request.takeDays.first, // Give one of what they take
-          initialTakeDays: [request.giveDay], // Take what they give
+          initialGiveDate: request.takeDates.first, // Give one of what they take
+          initialTakeDates: [request.giveDate], // Take what they give
         ),
       ),
     );
@@ -107,6 +106,26 @@ class _RequestBoardScreenState extends State<RequestBoardScreen> {
         return const Color(0xFF2196F3); // Blue
       default:
         return const Color(0xFF9E9E9E); // Grey
+    }
+  }
+
+  String _formatDate(DateTime d) {
+    final months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    final days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+    return '${days[d.weekday % 7]} ${months[d.month - 1]} ${d.day}';
+  }
+
+  String _getWeekLabel(DateTime date) {
+    final now = DateTime.now();
+    final thisSunday = now.subtract(Duration(days: (now.weekday) % 7));
+    final nextSunday = thisSunday.add(const Duration(days: 7));
+    
+    if (date.isBefore(nextSunday) && date.isAfter(thisSunday.subtract(const Duration(days: 1)))) {
+      return 'This Week';
+    } else if (date.isBefore(nextSunday.add(const Duration(days: 7))) && date.isAfter(nextSunday.subtract(const Duration(days: 1)))) {
+      return 'Next Week';
+    } else {
+      return 'Future';
     }
   }
 
@@ -179,7 +198,7 @@ class _RequestBoardScreenState extends State<RequestBoardScreen> {
   }
 
   Widget _buildRequestCard(SwapRequest request) {
-    final weekLabel = request.weekOffset == 0 ? 'This Week' : 'Next Week';
+    final weekLabel = _getWeekLabel(request.giveDate);
     final isPending = request.status == 'pending';
     final isOwnRequest = request.userId == widget.user.id;
 
@@ -257,7 +276,7 @@ class _RequestBoardScreenState extends State<RequestBoardScreen> {
                 ),
               ),
               Text(
-                request.giveDay,
+                _formatDate(request.giveDate),
                 style: const TextStyle(
                   fontSize: 14,
                   color: Color(0xFF1A2332),
@@ -278,7 +297,7 @@ class _RequestBoardScreenState extends State<RequestBoardScreen> {
               ),
               Expanded(
                 child: Text(
-                  request.takeDays.join(', '),
+                  request.takeDates.map(_formatDate).join(', '),
                   style: const TextStyle(
                     fontSize: 14,
                     color: Color(0xFF1A2332),

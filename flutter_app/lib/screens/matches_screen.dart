@@ -7,15 +7,15 @@ import 'home_screen.dart';
 
 class MatchesScreen extends StatelessWidget {
   final UserModel user;
-  final String giveDay;
-  final List<String> takeDays;
+  final DateTime giveDate;
+  final List<DateTime> takeDates;
   final List<SwapRequest> matches;
 
   const MatchesScreen({
     super.key,
     required this.user,
-    required this.giveDay,
-    required this.takeDays,
+    required this.giveDate,
+    required this.takeDates,
     required this.matches,
   });
 
@@ -25,6 +25,12 @@ class MatchesScreen extends StatelessWidget {
       .map((w) => w[0].toUpperCase())
       .take(2)
       .join();
+
+  String _formatDate(DateTime d) {
+    final months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    final days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+    return '${days[d.weekday % 7]} ${months[d.month - 1]} ${d.day}';
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -81,7 +87,7 @@ class MatchesScreen extends StatelessWidget {
                       final m = matches[i];
                       return _MatchCard(
                         match: m,
-                        myGiveDay: giveDay,
+                        myGiveDate: giveDate,
                         onMarkDone: () async {
                           try {
                             await ApiService.markDone(
@@ -143,10 +149,10 @@ class MatchesScreen extends StatelessWidget {
 
 class _MatchCard extends StatelessWidget {
   final SwapRequest match;
-  final String myGiveDay;
+  final DateTime myGiveDate;
   final VoidCallback onMarkDone;
 
-  const _MatchCard({required this.match, required this.myGiveDay, required this.onMarkDone});
+  const _MatchCard({required this.match, required this.myGiveDate, required this.onMarkDone});
 
   String _initials(String name) => name
       .split(' ')
@@ -154,6 +160,12 @@ class _MatchCard extends StatelessWidget {
       .map((w) => w[0].toUpperCase())
       .take(2)
       .join();
+
+  String _formatDate(DateTime d) {
+    final months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    final days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+    return '${days[d.weekday % 7]} ${months[d.month - 1]} ${d.day}';
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -185,9 +197,9 @@ class _MatchCard extends StatelessWidget {
               runSpacing: 6,
               crossAxisAlignment: WrapCrossAlignment.center,
               children: [
-                _Pill(text: 'Gives ${match.giveDay}', type: 'give'),
+                _Pill(text: 'Gives ${_formatDate(match.giveDate)}', type: 'give'),
                 const Icon(Icons.swap_horiz, size: 16, color: Color(0xFF888780)),
-                _Pill(text: 'Takes $myGiveDay', type: 'take'),
+                _Pill(text: 'Takes ${_formatDate(myGiveDate)}', type: 'take'),
               ],
             ),
             const SizedBox(height: 14),
