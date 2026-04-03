@@ -34,6 +34,17 @@ class _SubmitRequestScreenState extends State<SubmitRequestScreen> {
     if (widget.initialGiveDate != null) {
       _giveDate = _dateOnly(widget.initialGiveDate!);
       _step = 1; // Skip week selection
+      
+      // Determine which week the date belongs to
+      final now = DateTime.now();
+      final thisSunday = now.subtract(Duration(days: now.weekday % 7));
+      final nextSunday = thisSunday.add(const Duration(days: 7));
+      
+      if (_giveDate!.isAfter(nextSunday.subtract(const Duration(days: 1)))) {
+        _weekOffset = 1;
+      } else {
+        _weekOffset = 0;
+      }
     }
     if (widget.initialTakeDates != null) {
       _takeDates.addAll(widget.initialTakeDates!.map((d) => _dateOnly(d)));

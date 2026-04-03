@@ -28,9 +28,12 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
       return;
     }
 
+    // Capitalize first letter
+    final capitalizedName = name[0].toUpperCase() + name.substring(1);
+
     setState(() => _isLoading = true);
     try {
-      final user = await ApiService.createUser(name, _selectedRole!);
+      final user = await ApiService.createUser(capitalizedName, _selectedRole!);
       if (!mounted) return;
       Navigator.of(context).pushReplacement(
         MaterialPageRoute(builder: (_) => HomeScreen(user: user)),
@@ -39,7 +42,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
       // Fallback to local user when backend is unavailable
       final user = UserModel(
         id: DateTime.now().millisecondsSinceEpoch.toString(),
-        name: name,
+        name: capitalizedName,
         role: _selectedRole!,
       );
       if (!mounted) return;
