@@ -6,7 +6,6 @@ Run with: uvicorn main:app --reload --host 0.0.0.0 --port 8000
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
-from typing import Optional
 import sqlite3
 import uuid
 import json
@@ -94,37 +93,11 @@ def get_db():
 
 # ─── Utility Functions ─────────────────────────────────────────────────────────
 
-def day_name_to_index(day: str) -> int:
-    """Convert day name to index (Sunday=0, Monday=1, ..., Saturday=6)."""
-    days = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"]
-    return days.index(day)
-
-def index_to_day_name(idx: int) -> str:
-    """Convert day index to name."""
-    days = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"]
-    return days[idx % 7]
-
 def get_week_start_date(reference_date: datetime, week_offset: int = 0) -> datetime:
     """Get the Sunday that starts the week containing the reference_date + week_offset weeks."""
     current_week_start = reference_date - timedelta(days=(reference_date.weekday() + 1) % 7)
     target_week = current_week_start + timedelta(weeks=week_offset)
     return target_week
-
-def days_and_offset_to_dates(give_day: str, take_days: list[str], week_offset: int = 0) -> tuple[str, list[str]]:
-    """Convert day names and week offset to absolute dates (YYYY-MM-DD format)."""
-    now = datetime.now()
-    week_start = get_week_start_date(now, week_offset)
-    
-    give_day_idx = day_name_to_index(give_day)
-    give_date = (week_start + timedelta(days=give_day_idx)).strftime("%Y-%m-%d")
-    
-    take_dates = []
-    for day in take_days:
-        day_idx = day_name_to_index(day)
-        date = (week_start + timedelta(days=day_idx)).strftime("%Y-%m-%d")
-        take_dates.append(date)
-    
-    return give_date, take_dates
 
 def get_week_start_for_date(date_str: str) -> datetime:
     """Get the Sunday that starts the week containing the given date (YYYY-MM-DD)."""
@@ -143,13 +116,8 @@ class CreateSwapRequest(BaseModel):
     user_id: str
     user_name: str
     user_role: str = Field(..., pattern="^(Chef|Cook)$")
-    # New fields (preferred)
-    give_date: Optional[str] = None  # ISO date string (YYYY-MM-DD)
-    take_dates: Optional[list[str]] = None  # List of ISO date strings
-    # Legacy fields (for backward compatibility)
-    give_day: Optional[str] = None
-    take_days: Optional[list[str]] = None
-    week_offset: int = Field(default=0, ge=0, le=1)
+    give_date: str  # ISO date string (YYYY-MM-DD)
+    take_dates: list[str]  # List of ISO date strings
 
 class MarkDoneRequest(BaseModel):
     my_request_id: str
@@ -277,40 +245,29 @@ def create_user(body: CreateUserRequest):
 def submit_request(body: CreateSwapRequest):
     """
     Submit a new shift-swap request and immediately return any matches found.
-    Supports both new date format and legacy day+offset format.
+    Requires absolute dates (YYYY-MM-DD format).
     """
-    # Handle format conversion
-    if body.give_date and body.take_dates:
-        # New format with absolute dates
-        give_date = body.give_date
-        take_dates = body.take_dates
-        # Also compute legacy fields for storage
-        try:
-            give_date_obj = datetime.strptime(give_date, "%Y-%m-%d")
-            now = datetime.now()
-            week_start = get_week_start_date(now, 0)
-            if give_date_obj >= week_start + timedelta(days=7):
-                week_offset = 1
-            else:
-                week_offset = 0
-        except:
+    # Validate dates
+    try:
+        give_date_obj = datetime.strptime(body.give_date, "%Y-%m-%d")
+        for date_str in body.take_dates:
+            datetime.strptime(date_str, "%Y-%m-%d")
+    except ValueError as e:
+        raise HTTPException(400, f"Invalid date format. Use YYYY-MM-DD: {e}")
+
+    give_date = body.give_date
+    take_dates = body.take_dates
+
+    # Compute week_offset for storage (for backward compatibility)
+    try:
+        now = datetime.now()
+        week_start = get_week_start_date(now, 0)
+        if give_date_obj >= week_start + timedelta(days=7):
+            week_offset = 1
+        else:
             week_offset = 0
-    elif body.give_day and body.take_days:
-        # Legacy format with day names and offset
-        VALID_DAYS = {"Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"}
-        if body.give_day not in VALID_DAYS:
-            raise HTTPException(400, "Invalid give_day")
-        invalid = [d for d in body.take_days if d not in VALID_DAYS]
-        if invalid:
-            raise HTTPException(400, f"Invalid take_days: {invalid}")
-        if body.give_day in body.take_days:
-            raise HTTPException(400, "give_day cannot also be in take_days")
-        
-        # Convert to dates
-        give_date, take_dates = days_and_offset_to_dates(body.give_day, body.take_days, body.week_offset)
-        week_offset = body.week_offset
-    else:
-        raise HTTPException(400, "Must provide either (give_date, take_dates) or (give_day, take_days, week_offset)")
+    except:
+        week_offset = 0
 
     request_id = str(uuid.uuid4())
 
