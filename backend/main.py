@@ -354,6 +354,9 @@ def get_my_requests(user_id: str):
 
         results = []
         for row in rows:
+            # Guard against NULL take_dates from rows inserted before migration
+            if not row["take_dates"] or not row["give_date"]:
+                continue
             take_dates = json.loads(row["take_dates"])
             # Find matches for this request
             raw_matches = find_matches(
@@ -407,7 +410,11 @@ def get_all_requests(user_role: str):
 
         results = []
         for row in rows:
-            take_dates = json.loads(row["take_dates"])
+            # Guard against NULL take_dates from rows inserted before migration
+            take_dates = json.loads(row["take_dates"] or "[]")
+            # Skip rows with no give_date (also pre-migration orphans)
+            if not row["give_date"]:
+                continue
             results.append(
                 SwapRequestResponse(
                     id=row["id"],
@@ -417,7 +424,7 @@ def get_all_requests(user_role: str):
                     give_date=row["give_date"],
                     take_dates=take_dates,
                     status=row["status"],
-                    matches=[],  # No matches needed for board view
+                    matches=[],
                 )
             )
 
